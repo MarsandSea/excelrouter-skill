@@ -1,0 +1,163 @@
+name: Sync upstream core
+
+# 拉取式同步：本仓每天自动检查一次 excel-router 桌面版最新的发布 tag，
+# 有新版本就拉过来、跑测试，测试通过才提交并打同名 tag。只跟发布 tag 走，
+# 不跟上游 main 分支的半成品——上游还没打 tag 的改动不会被同步过来。
+#
+# 零新增 secret：读公开上游仓不需要 token；写回本仓用 Actions 默认签发的
+# GITHUB_TOKEN（配合下面 permissions: contents: write），不碰 excel-router
+# 那边已经调通的 release.yml。
+
+on:
+  schedule:
+    - cron: "17 3 * * *"   # 每天 UTC 03:17（北京时间 11:17）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+env:
+  UPSTREAM_REPO: MarsandSea/excel-router
+  VENDOR_DIR: skills/excelrouter/scripts/vendor/core
+  TAG_FILE: skills/excelrouter/scripts/vendor/.upstream-tag
+  UPSTREAM_MD: skills/excelrouter/scripts/vendor/UPSTREAM.md
+  PLUGIN_JSON: .claude-plugin/plugin.json
+  REQ_FILE: skills/excelrouter/requirements.txt
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout upstream excel-router
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPO }}
+          fetch-depth: 0
+          path: upstream
+
+      - name: Determine whether a newer upstream tag exists
+        id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          LATEST_TAG=$(git -C upstream tag -l 'v*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "上游没有任何 v* 发布 tag，跳过本次同步"
+            echo "should_sync=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          RECORDED_TAG=$(cat "$TAG_FILE" 2>/dev/null | tr -d '[:space:]')
+          [ -z "$RECORDED_TAG" ] && RECORDED_TAG="v0.0.0"
+          echo "上游最新 tag：$LATEST_TAG ｜ 本仓记录：$RECORDED_TAG"
+          if [ "$LATEST_TAG" = "$RECORDED_TAG" ]; then
+            echo "已是最新，跳过"
+            echo "should_sync=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_sync=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout upstream at target tag
+        if: steps.check.outputs.should_sync == 'true'
+        shell: bash
+        run: git -C upstream checkout "${{ steps.check.outputs.latest_tag }}"
+
+      - name: Copy core/ into vendor + sync requirements.txt
+        if: steps.check.outputs.should_sync == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$VENDOR_DIR"/*.py
+          cp upstream/core/*.py "$VENDOR_DIR"/
+          echo "vendor/core 已更新："
+          ls -la "$VENDOR_DIR"
+
+          {
+            echo "# excelrouter skill 运行依赖（自动从上游 excel-router/requirements.txt 同步）"
+            echo "# 已去掉 customtkinter —— 这是命令行/skill 形态，没有桌面 GUI"
+            grep -vi '^customtkinter' upstream/requirements.txt
+          } > "$REQ_FILE"
+
+      - name: Update UPSTREAM.md / .upstream-tag / plugin.json version
+        if: steps.check.outputs.should_sync == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.check.outputs.latest_tag }}"
+          VERSION="${TAG#v}"
+          SHA=$(git -C upstream rev-parse HEAD)
+          NOW=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+          echo "$TAG" > "$TAG_FILE"
+
+          python3 - "$UPSTREAM_MD" "$TAG" "$SHA" "$NOW" <<'PYEOF'
+          import sys, re
+          path, tag, sha, now = sys.argv[1:5]
+          with open(path, encoding="utf-8") as f:
+              content = f.read()
+          block = (
+              "<!-- SYNC:BEGIN 以下内容由 sync-upstream.yml 每次同步自动重写，手改无效 -->\n"
+              "## 当前同步状态\n\n"
+              f"- 上游 tag：`{tag}`\n"
+              f"- 上游 commit：`{sha}`\n"
+              f"- 同步时间：{now}\n"
+              "<!-- SYNC:END -->"
+          )
+          new_content = re.sub(
+              r"<!-- SYNC:BEGIN .*? -->.*?<!-- SYNC:END -->",
+              block, content, count=1, flags=re.S,
+          )
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(new_content)
+          PYEOF
+
+          python3 - "$PLUGIN_JSON" "$VERSION" <<'PYEOF'
+          import json, sys
+          path, version = sys.argv[1], sys.argv[2]
+          with open(path, encoding="utf-8") as f:
+              data = json.load(f)
+          data["version"] = version
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+          PYEOF
+
+      - name: Set up Python
+        if: steps.check.outputs.should_sync == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps and run tests
+        if: steps.check.outputs.should_sync == 'true'
+        run: |
+          pip install -r "$REQ_FILE"
+          pip install pytest
+          pytest -q
+
+      - name: Commit and tag if content changed
+        if: steps.check.outputs.should_sync == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.check.outputs.latest_tag }}"
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "测试通过但内容无变化，跳过提交"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$VENDOR_DIR" "$TAG_FILE" "$UPSTREAM_MD" "$PLUGIN_JSON" "$REQ_FILE"
+          git commit -m "chore(sync): 同步上游 $TAG"
+          git push origin HEAD:main
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "本仓已存在 tag $TAG，跳过打 tag"
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi

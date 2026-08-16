@@ -548,19 +548,27 @@ def _summary_key_path(output_root, primary, src_stem, single_file, merge):
     """『汇总』输出键与路径。
 
     单文件 / merge=True → 扁平 {主取值}.xlsx（跨文件合并到一个）。
-    文件夹 + merge=False → {主取值}/汇总/{原文件名}.xlsx（原文件拆分，不合并）。
+    文件夹 + merge=False → {主取值}/汇总/{主取值}_{原文件名}.xlsx（原文件拆分，不合并）。
+    文件名带上主取值前缀：同一份源表拆到不同主取值的文件夹里，原本各自都叫
+    「{原文件名}.xlsx」，一旦脱离文件夹（比如直接从各文件夹里把文件拖出来一起发）
+    就分不清谁是谁，前缀是让文件名本身自带身份。
     """
     p = safe_filename(primary)
     if single_file or merge:
         return ('汇总', primary), os.path.join(output_root, f"{p}.xlsx")
-    return ('汇总', primary, src_stem), os.path.join(output_root, p, "汇总", f"{src_stem}.xlsx")
+    return ('汇总', primary, src_stem), os.path.join(output_root, p, "汇总", f"{p}_{src_stem}.xlsx")
 
 
-def _person_key_path(output_root, primary, person):
-    """『到人』输出键与路径：{主取值}/到人/{姓名}.xlsx（同一人跨文件合并到一个）。"""
+def _person_key_path(output_root, primary, person, src_stem):
+    """『到人』输出键与路径：{主取值}/到人/{姓名}_{原文件名}.xlsx（同一人跨文件合并到一个）。
+
+    键不含 src_stem——同一人跨文件合并进同一个输出簿的语义不变；src_stem 只影响
+    文件名，且只有「第一个产生该人输出」的源文件的文件名会被采用（emit() 只在
+    key 首次出现时使用传入的 save_path，后续文件命中同一 key 时复用已建好的输出簿）。
+    """
     p = safe_filename(primary)
     s = safe_filename(person)
-    return ('到人', primary, person), os.path.join(output_root, p, "到人", f"{s}.xlsx")
+    return ('到人', primary, person), os.path.join(output_root, p, "到人", f"{s}_{src_stem}.xlsx")
 
 
 # =====================================================
@@ -753,7 +761,7 @@ def process_file(file_path, rel_path, output_root, config, outputs,
                     for person in sorted({v for v in sub_persons if not is_skip_value(v, skip)}):
                         rows_df = sub[sub_persons == person]
                         if len(rows_df):
-                            k2, p2 = _person_key_path(output_root, pval, person)
+                            k2, p2 = _person_key_path(output_root, pval, person, src_stem)
                             emit(k2, p2, sn, h, rows_df, ws_src, src_max_col, formula_ws)
 
         if log_fn and total_rows:

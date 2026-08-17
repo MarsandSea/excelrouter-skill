@@ -48,14 +48,42 @@ cp -r excelrouter-skill/skills/excelrouter ~/.claude/skills/
 pip install -r skills/excelrouter/requirements.txt
 ```
 
-## 用法
+## 用法（新手速览）
 
-装好后正常和 Claude 对话即可，比如：
+**Q：这是什么？**
+A：让 Claude 直接帮你拆 Excel、给 PDF 批量加密的插件，不用装软件、不用点界面。
 
-> 把这批 Excel 按"区域"字段拆开，每个区域一个文件，再按姓名拆到人
+**Q：怎么装？**
+A：打开 Claude Code，依次输入：
+```
+/plugin marketplace add MarsandSea/excelrouter-skill
+/plugin install excelrouter
+```
 
-Claude 会自动触发 `excelrouter` skill：先看表结构和字段取值、和你确认拆分字段，
-再执行拆分。也可以直接手动跑三个命令行脚本，见
+**Q：装完还要干嘛？**
+A：装一次依赖：`pip install -r <插件路径>/requirements.txt`（路径 Claude 会告诉你）。
+
+**Q：怎么用——拆 Excel？**
+A：把 Excel 文件路径告诉 Claude，说清楚按什么字段拆，比如：
+- "帮我把这份工资表按部门拆开，每个部门一个文件"
+- "这一批月度报表，按区域拆，顺便按姓名也拆到人"
+
+Claude 会先自己看一眼有哪些字段、每个字段有哪些取值，跟你确认没有拆错（比如"销售部"
+和"销售部门"算不算一个部门），再动手拆，拆完会告诉你文件生成在哪个文件夹。
+
+**Q：怎么用——PDF 批量加密？**
+A：先准备一张"网格→密码"的 Excel 清单（一行一个人/一个网格，至少要有"密码"这一列），
+然后说：
+- "把这几个 PDF 按这张密码表批量加密，每个人一个专属密码，再加个水印"
+
+Claude 会先看一眼清单里的列名，跟你确认哪列是密码、哪列是接收人，再生成加密后的
+PDF（AES-256）+ 一份"分发清单.xlsx"。**清单里是明文密码，只给自己或管理员留底，
+千万别跟加密后的 PDF 一起发出去**。
+
+**Q：要钱吗，数据安全吗？**
+A：免费开源，全程本机处理，不联网、不上传。
+
+想直接手动跑命令行脚本、或者要更细的参数说明，见
 [`skills/excelrouter/SKILL.md`](skills/excelrouter/SKILL.md) 和
 [`skills/excelrouter/references/`](skills/excelrouter/references/) 下的配方/参数手册。
 

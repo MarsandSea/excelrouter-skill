@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo-er.png" alt="ExcelRouter Logo" width="120">
+
 # 📊 ExcelRouter · 表格拆分 & PDF 加密分发
 
 **跟 AI 说一句话，拆表、加密 PDF 全自动完成** — 不用装软件，不用懂编程

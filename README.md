@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
-![SkillHub](https://img.shields.io/badge/SkillHub-审核中%20%2F%20即将上架-1a73e8)
+[![SkillHub](https://img.shields.io/badge/SkillHub-已上架-1a73e8)](https://skillhub.cn/skills/excelrouter)
 
 *"帮我把这张工资表按部门拆开，每个部门一个文件"——剩下的交给 AI。*
 *数据全程在你电脑上处理，不联网、不上传。*
@@ -92,11 +92,11 @@
 
 ### 方式一：WorkBuddy 一键安装（最简单，推荐）
 
-上架 SkillHub（skillhub.cn）后，在 WorkBuddy 里直接搜索安装：
+已上架 SkillHub（[skillhub.cn/skills/excelrouter](https://skillhub.cn/skills/excelrouter)），在 WorkBuddy 里直接搜索安装：
 
 > **WorkBuddy → 左侧「技能 / 专家」→ 搜索「ExcelRouter」→ 安装**
 
-就这一步，装完就能用。审核通过前可先用下面的方式。
+就这一步，装完就能用。
 
 ### 方式二：Claude Code 安装
 

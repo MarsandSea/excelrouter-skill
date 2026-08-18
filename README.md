@@ -2,7 +2,7 @@
 
 # 📊 ExcelRouter · 表格拆分 & PDF 加密分发
 
-**对 AI 说一句话，拆表 / 加密 PDF 全自动完成** — Claude Code 与 WorkBuddy 双端可用
+**跟 AI 说一句话，拆表、加密 PDF 全自动完成** — 不用装软件，不用懂编程
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
@@ -10,33 +10,75 @@
 ![SkillHub](https://img.shields.io/badge/SkillHub-审核中%20%2F%20即将上架-1a73e8)
 
 *"帮我把这张工资表按部门拆开，每个部门一个文件"——剩下的交给 AI。*
-*数据全程本机处理，不联网、不上传。*
+*数据全程在你电脑上处理，不联网、不上传。*
 
-作者 / Author：**AbeLin** · MIT License · ⭐ 觉得好用请点个 Star 支持作者
+作者：**AbeLin** · MIT 开源协议 · ⭐ 觉得好用请点个 Star
 
 </div>
 
 ---
 
-## ✨ 为什么用它
+## 🎯 这能帮你做什么
 
-| | |
+你是不是经常遇到这些活儿？
+
+- 📋 **一张几百人的工资表 / 考勤表**，要按部门拆成单独文件，发给各部门负责人
+- 🔒 **一批 PDF 合同 / 报告**，要分别加密、打上专属水印，再分发给不同的人
+- 👤 **同一个人的数据散落在好几个文件里**，要合并成一份个人档案
+
+以前要么手动复制粘贴到手酸，要么找会写代码的人帮忙。**ExcelRouter 让你直接对 AI 说一句话，它就帮你搞定。**
+
+---
+
+## 👥 谁适合用
+
+| 角色 | 典型场景 |
 |---|---|
-| 🧩 **一句话触发** | 不用装软件、不用开界面、不用写代码，直接对 AI 说需求 |
-| 🗂️ **Excel 按字段拆分** | 部门 / 区域 / 工号 / 班级……任意列，保留原始格式 |
-| 🔐 **PDF 批量加密分发** | 按"网格→密码"清单批量加密 + 专属水印 + 密码分发清单 |
-| 🛡️ **数据全程本机** | 所有处理在本地完成，不联网、不上传，适合敏感数据 |
+| 🧑‍💼 **HR / 行政** | 工资表按部门拆、考勤表按人拆、通知按区域拆 |
+| 💰 **财务** | 凭证按月份拆、报表按部门拆、PDF 合同加密分发 |
+| 📊 **运营 / 销售** | 客户名单按区域拆、业绩表按团队拆、报告 PDF 加密分发 |
+| 👩‍🏫 **老师 / 班主任** | 成绩表按班级拆、按学生拆到每人一份 |
 
-**典型场景：**
-- 一张几百人的工资表 / 考勤表 / 销售明细 → 按部门拆成单文件发给各部门负责人
-- 一批 PDF 合同 / 报告 → 按接收人分别加密、打上专属水印后分发
-- 同一个人散落在多个文件里 → 跨文件合并成"到人"的个人档案
+**不会编程？没关系。** 你只需要会打字、会描述需求，AI 来干脏活累活。
+
+---
+
+## ✨ 三大能力
+
+### 1️⃣ Excel 按字段拆分
+
+按任意一列把大表拆成多个小文件：部门、区域、工号、班级、姓名……随便选。
+
+- ✅ **保留原格式**：字体、颜色、列宽、合并单元格，拆完跟原表一样
+- ✅ **拆到个人**：先按部门拆，再按人拆到每人一个文件
+- ✅ **跨文件合并**：同一个人在多个文件里的数据，自动合并成一份总表
+- ✅ **智能识别**：AI 会先看一眼有哪些字段、取值，跟你确认没拆错再动手
+
+### 2️⃣ PDF 批量加密分发
+
+给一批 PDF 分别加上密码、打上专属水印，再生成一份密码清单方便你逐人通知。
+
+- ✅ **银行级加密**（AES-256），没有密码打不开
+- ✅ **专属水印**：自动写上接收人姓名 / 日期，防截图外传
+- ✅ **密码清单**：输出一份「分发清单.xlsx」，记录每个人对应的密码
+
+> ⚠️ **重要提醒**：密码清单含明文密码，只给你自己留底，
+> **千万不要和加密后的 PDF 一起发出去**！
+
+### 3️⃣ 数据全程本机处理
+
+所有文件都在**你自己的电脑上**处理完成：
+
+- 🚫 不联网、不上传任何数据
+- 🚫 不留痕、不发送到任何服务器
+- ✅ 适合处理工资、合同、客户信息等敏感数据
+- ✅ 代码完全开源，可逐行审查
 
 ---
 
 ## 📸 效果预览
 
-> TODO：替换为你的真实截图（建议放 `docs/screenshots/` 目录）
+> 📷 截图准备中，即将补充到 `docs/screenshots/`
 >
 > 1. 一句话拆分前 → 拆分后按部门生成的文件列表
 > 2. 打开拆分结果，展示格式（字体/颜色/列宽）原样保留
@@ -44,26 +86,29 @@
 
 ---
 
-## 🚀 安装
+## 🚀 怎么装
 
-### 方式一：WorkBuddy（推荐，国产办公用户）
+### 方式一：WorkBuddy 一键安装（最简单，推荐）
 
-上架 SkillHub（skillhub.cn）后可直接在 WorkBuddy 技能市场搜索 **ExcelRouter** 一键安装：
+上架 SkillHub（skillhub.cn）后，在 WorkBuddy 里直接搜索安装：
 
-```
-WorkBuddy → 左侧「技能 / 专家」→ 搜索 ExcelRouter → 安装
-```
+> **WorkBuddy → 左侧「技能 / 专家」→ 搜索「ExcelRouter」→ 安装**
 
-> 审核通过前，可用方式二手动安装，效果完全一样。
+就这一步，装完就能用。审核通过前可先用下面的方式。
 
-### 方式二：Claude Code 插件市场安装
+### 方式二：Claude Code 安装
+
+在 Claude Code 里依次输入两行：
 
 ```
 /plugin marketplace add MarsandSea/excelrouter-skill
 /plugin install excelrouter
 ```
 
-### 方式三：手动拷贝为本地 skill
+### 方式三：手动安装（给技术小伙伴）
+
+<details>
+<summary>点开查看命令行安装方式</summary>
 
 ```bash
 git clone https://github.com/MarsandSea/excelrouter-skill.git
@@ -72,100 +117,135 @@ cp -r excelrouter-skill/skills/excelrouter ~/.claude/skills/      # Claude Code
 cp -r excelrouter-skill/skills/excelrouter ~/.workbuddy/skills/   # WorkBuddy
 ```
 
-### 安装 Python 依赖（一次性）
+第一次使用需要装一下 Python 依赖（装一次就行）：
 
 ```bash
 pip install -r skills/excelrouter/requirements.txt
 ```
 
-> 只用 Excel 拆分只需 `pandas` / `openpyxl` / `xlrd`；PDF 加密分发再加
-> `pypdf` / `fpdf2` / `cryptography`（缺 `cryptography` 会降级为 RC4-128，功能仍可用）。
+> 只用 Excel 拆分的话，装 `pandas` / `openpyxl` / `xlrd` 就够；
+> 要用 PDF 加密分发，再装上 `pypdf` / `fpdf2` / `cryptography`
+> （缺 `cryptography` 会自动降级，功能仍可用，只是加密强度低一些）。
+
+</details>
 
 ---
 
-## 💬 快速上手
+## 💬 怎么用
+
+装好之后，直接像聊天一样对 AI 说话就行。
 
 ### 拆 Excel
 
-把文件路径告诉 AI，说清楚按什么字段拆，例如：
+把文件路径发给 AI，说清楚按什么拆：
 
 ```
-"帮我把这份工资表按部门拆开，每个部门一个文件"
-"这一批月度报表，按区域拆，顺便按姓名也拆到人"
-"只要东区和西区的数据，其它区域不用管"
+帮我把这份工资表按部门拆开，每个部门一个文件
 ```
 
-AI 会先自动看一眼有哪些字段、每个字段有哪些取值，**跟你确认没有拆错**
-（比如"销售部"和"销售部门"算不算同一个），再动手拆分，完成后告诉你文件在哪。
+```
+这一批月度报表，按区域拆，顺便按姓名也拆到人
+```
+
+```
+只要东区和西区的数据，其它区域不用管
+```
+
+AI 会**先自动看一眼**有哪些字段、每个字段有哪些取值，**跟你确认没拆错**
+（比如问你"销售部"和"销售部门"算不算同一个部门），确认后才动手拆，
+完成后告诉你文件生成在哪个文件夹。
 
 ### PDF 加密分发
 
-先准备一张「网格→密码」Excel 清单（一行一个人，至少含"密码"列），然后说：
+先准备一张「网格→密码」Excel 清单（一行一个人，至少要有"密码"这一列），然后说：
 
 ```
-"把这几个 PDF 按这张密码表批量加密，每个人一个专属密码，再加个水印"
+把这几个 PDF 按这张密码表批量加密，每个人一个专属密码，再加个水印
 ```
 
-AI 会确认哪列是密码、哪列是接收人，然后输出：
-- ✅ 加密后的 PDF（AES-256）
-- ✅ 带专属水印（接收人 / 网格 / 日期）
-- ✅ 「分发清单.xlsx」（明文密码）
+AI 会确认哪列是密码、哪列是接收人，然后输出加密后的 PDF + 带水印 + 密码清单。
 
-> ⚠️ **安全提醒**：分发清单含明文密码，只给自己或管理员留底，
-> **千万不要和加密后的 PDF 一起发出去**！
-
----
-
-## 🧰 更多能力（一句话就能触发）
+### 更多说法（随口说就行）
 
 | 你想干嘛 | 就这么说 |
 |---|---|
-| 跨文件合并再拆 | "这整个文件夹的月度报表，每个区域整理一份" |
-| 拆到个人 | "按部门拆，再按工号拆到每个人" |
-| 只要部分取值 | "只要东区和西区的数据" |
-| 同人跨文件合成总表 | "同一个人在好几个文件里都有数据，希望合成一张总表" |
-| 同义取值合并 | "有的写'销售部'有的写'销售部门'，是同一个部门" |
+| 同一个人在好几个文件里 | "把同一个人的数据合并成一张总表" |
+| 取值写法不统一 | "有的写'销售部'有的写'销售部门'，是同一个部门" |
 | 表头不在第一行 | "表头在第三行，别认错了" |
-| 保留公式 | "接收人要能看到金额是怎么算出来的公式" |
-| 先看结果不动文件 | "先看看会拆出哪些文件，不要真的写盘" |
+| 保留计算公式 | "接收人要能看到金额是怎么算出来的" |
+| 先看看不真拆 | "先看看会拆出哪些文件，不要真的写盘" |
 | 自定义水印 | "水印写'内部资料·请勿外传'" |
 
-完整参数说明见
-[`skills/excelrouter/SKILL.md`](skills/excelrouter/SKILL.md) 和
-[`skills/excelrouter/references/`](skills/excelrouter/references/)（配方 / 参数手册 / 排查手册）。
+---
+
+## 🛡️ 我的数据安全吗
+
+**放心，非常安全。**
+
+- 🔒 所有文件都在你自己的电脑上处理，**全程不联网**
+- 🔒 密码只用来加密 PDF，不会上传、不会记录到日志
+- 🔒 代码完全开源（MIT 协议），任何人都能审查每一行代码
+- 🔒 用的都是知名开源库，没有来路不明的依赖
 
 ---
 
-## 🛡️ 数据安全
+## ❓ 常见问题
 
-- ✅ 全程本机处理，无网络调用，不上传任何数据
-- ✅ 密码仅用于本地 PDF 加密，不落盘到日志
-- ✅ 代码开源（MIT），核心逻辑可逐行审查
-- ✅ 依赖均为知名 PyPI 包：openpyxl / pandas / xlrd / pypdf / fpdf2 / cryptography
+**要钱吗？**
+免费，MIT 开源，随便用。
 
----
+**我不会编程能用吗？**
+能。你只需要会描述需求，比如"按部门拆开"——AI 来干技术活。
 
-## ❓ FAQ
+**支持哪些 Excel 格式？**
+`.xlsx` 完美支持（保留所有格式）；`.xls`（旧格式）也能用，但样式可能丢失，建议先另存为 `.xlsx`。
 
-**Q：要钱吗？**
-A：免费，MIT 开源，随便用。
+**数据区有合并单元格怎么办？**
+表头区的合并单元格会保留；数据区的不支持，建议源表数据区尽量不要合并单元格。
 
-**Q：支持哪些 Excel 格式？**
-A：`.xlsx` 完美支持（保留格式）；`.xls` 会自动转换后再处理（旧格式样式会丢失，建议另存为 `.xlsx`）。
+**水印里的中文变成问号？**
+Windows 一般会自动找到中文字体；如果没找到，可以指定一个中文字体文件（`.ttf` 格式）。
 
-**Q：数据区有合并单元格怎么办？**
-A：表头区的合并单元格会保留；数据区的合并单元格暂不支持，建议源表数据区避免合并。
-
-**Q：没有中文字体会影响水印吗？**
-A：Windows 会自动探测 `simhei.ttf`；其他系统可用 `--font 字体.ttf` 指定（需 `.ttf` 格式）。
-
-**Q：这个 skill 和 ExcelRouter 桌面版什么关系？**
-A：本仓是 [excel-router](https://github.com/MarsandSea/excel-router) 桌面工具核心逻辑的
-Skill 移植版，同一套引擎、无需 GUI。要图形界面给同事用，去下载桌面版 exe。
+**和 ExcelRouter 桌面版什么关系？**
+本仓是 [excel-router](https://github.com/MarsandSea/excel-router) 桌面工具核心能力的 AI 版移植——同一套引擎，但不用装软件、不用开界面，对 AI 说一句话就行。想要图形界面给同事用，去下载桌面版 exe。
 
 ---
 
-## 🔄 版本如何跟上游同步
+## 📣 觉得好用？
+
+- ⭐ 给本仓库点个 Star，让更多人看到
+- 🐛 遇到问题提 Issue（附上报错信息 + 最小复现文件）
+- 🤝 欢迎 PR
+- 💬 也欢迎分享给身边经常被表格折磨的同事
+
+---
+
+<details>
+<summary><b>🔧 给开发者（目录结构 / 同步机制 / 开发指南）</b></summary>
+
+### 目录结构
+
+```
+excelrouter-skill/
+├── .claude-plugin/           # 插件市场清单（marketplace.json + plugin.json）
+├── skills/excelrouter/
+│   ├── SKILL.md              # skill 主文件，触发词/工作流/常见陷阱
+│   ├── manifest.yaml         # WorkBuddy SkillHub 市场元信息
+│   ├── requirements.txt
+│   ├── scripts/
+│   │   ├── _common.py        # 公共工具（sys.path 引导、默认配置、JSON 输出约定）
+│   │   ├── er_inspect.py     # 看表：字段名/取值/表头行
+│   │   ├── er_split.py       # Excel 拆分
+│   │   ├── er_pdf_dist.py    # PDF 按网格加密分发
+│   │   └── vendor/core/      # ← 上游 core/ 的逐字副本，自动同步，勿手改
+│   └── references/           # 参数手册 / 场景配方 / 排查手册
+├── tests/test_cli.py         # 三个脚本的冒烟测试
+└── .github/workflows/
+    ├── sync-upstream.yml     # 拉取式自动同步
+    └── ci.yml                # push/PR 跑测试
+```
+
+### 版本如何跟上游同步
 
 `skills/excelrouter/scripts/vendor/core/` 是
 [excel-router](https://github.com/MarsandSea/excel-router) 仓库 `core/` 目录的逐字副本，
@@ -179,33 +259,7 @@ Skill 移植版，同一套引擎、无需 GUI。要图形界面给同事用，�
 [`skills/excelrouter/scripts/vendor/UPSTREAM.md`](skills/excelrouter/scripts/vendor/UPSTREAM.md)。
 **`vendor/` 目录下的文件不要手改**，下次同步会直接覆盖。
 
----
-
-## 📁 目录结构
-
-```
-excelrouter-skill/
-├── .claude-plugin/           # 插件市场清单（marketplace.json + plugin.json）
-├── skills/excelrouter/
-│   ├── SKILL.md              # skill 主文件，触发词/工作流/常见陷阱
-│   ├── manifest.yaml         # WorkBuddy SkillHub 市场元信息（slug/版本/触发词/标签）
-│   ├── requirements.txt
-│   ├── scripts/
-│   │   ├── _common.py        # 公共小工具（sys.path 引导、默认配置、JSON 输出约定）
-│   │   ├── er_inspect.py     # 看表：字段名/取值/表头行
-│   │   ├── er_split.py       # Excel 拆分
-│   │   ├── er_pdf_dist.py    # PDF 按网格加密分发
-│   │   └── vendor/core/      # ← 上游 core/ 的逐字副本，自动同步，勿手改
-│   └── references/           # 参数手册 / 场景配方 / 排查手册
-├── tests/test_cli.py         # 三个脚本的冒烟测试
-└── .github/workflows/
-    ├── sync-upstream.yml     # 拉取式自动同步
-    └── ci.yml                # push/PR 跑测试
-```
-
----
-
-## 🧑‍💻 开发
+### 开发
 
 ```bash
 pip install -r skills/excelrouter/requirements.txt
@@ -214,14 +268,9 @@ pytest -q
 ruff check .
 ```
 
-## 📣 支持作者
-
-觉得有用的话：
-- ⭐ 给本仓库点个 Star
-- 🐛 遇到问题提 Issue（附上报错信息 + 最小复现文件）
-- 🤝 欢迎 PR（先跑通 `pytest -q` 和 `ruff check .`）
-
-## 📄 协议
+### 协议
 
 MIT License，与上游 [excel-router](https://github.com/MarsandSea/excel-router) 一致。
 `scripts/vendor/core/` 下每个文件保留原始版权头，请勿删除。
+
+</details>

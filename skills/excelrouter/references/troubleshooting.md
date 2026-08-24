@@ -52,6 +52,15 @@ stderr 打印警告，看到就转告用户"请先用 Excel 或 WPS 打开源表
 - `--merge` 会把所有输出工作簿整批留在内存到最后统一保存，宽表+大批量文件时内存压力更大，
   非必要不加这个选项。
 
+## Windows 脚本运行报 `Memory allocation` / `Intel MKL` 错误
+
+numpy 底层的 OpenBLAS 在 Windows 上默认多线程，某些环境下会因内存分配失败直接崩溃。
+在命令前加 `OPENBLAS_NUM_THREADS=1` 限制单线程即可：
+```bash
+OPENBLAS_NUM_THREADS=1 python scripts/er_split.py --input 明细.xlsx --output 拆分结果 --by 部门
+```
+这是 numpy 的已知问题，不影响数据正确性。
+
 ## `pip install -r requirements.txt` 报错，或者提示缺 pypdf/fpdf2/cryptography
 
 Excel 拆分只需要 `pandas`/`openpyxl`/`xlrd` 这三个，PDF 加密分发才需要 `pypdf`/`fpdf2`。

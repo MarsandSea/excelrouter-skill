@@ -10,7 +10,7 @@ description: 表格拆分与批量分发专用技能。当用户想把一份或�
 （`scripts/vendor/core/`，随上游发版自动同步，见 `scripts/vendor/UPSTREAM.md`），
 在这里以命令行形式暴露，不需要用户装 exe、开界面。
 
-**三个脚本，都在 `scripts/` 下，都用系统 Python 直接跑（`python 脚本.py --help` 看完整参数）：**
+**三个脚本，都在 `scripts/` 下（`python 脚本.py --help` 看完整参数）：**
 
 | 脚本 | 用途 |
 |---|---|
@@ -18,12 +18,19 @@ description: 表格拆分与批量分发专用技能。当用户想把一份或�
 | `er_split.py` | 按字段拆分 Excel |
 | `er_pdf_dist.py` | PDF 按网格加密分发 |
 
-首次使用前装依赖（同一个 Python 环境装一次就行）：
+**运行环境（重要）：** 首次使用前装依赖（同一个 Python 环境装一次就行）：
 ```bash
 pip install -r requirements.txt
 ```
 （这里指 `skills/excelrouter/requirements.txt`；只用 Excel 拆分可以不装 `pypdf`/`fpdf2`/`cryptography`，
 但装了也不冲突。）
+
+**Windows 用户注意：** 如果脚本运行时报 `Memory allocation` / `Intel MKL` 相关错误，
+在命令前加 `OPENBLAS_NUM_THREADS=1`：
+```bash
+OPENBLAS_NUM_THREADS=1 python scripts/er_split.py --input 明细.xlsx --output 拆分结果 --by 部门
+```
+这是 numpy/openblas 在 Windows 单进程多线程时的已知问题，限制线程数即可。
 
 ## 核心工作流：先看，再问，再拆
 

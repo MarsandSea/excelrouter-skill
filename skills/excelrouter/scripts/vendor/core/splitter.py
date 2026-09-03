@@ -36,9 +36,11 @@ MIT License
 
 import os
 import re
+import json
 import time
 import shutil
 import tempfile
+import threading
 import warnings
 import datetime
 from copy import copy
@@ -214,6 +216,47 @@ def normalize_to_xlsx(file_path, log_fn=None):
         if log_fn:
             log_fn(f"  ⚠️ xls 转换失败：{e}")
         return file_path, False
+
+
+# =====================================================
+# 长耗时阻塞调用的"仍在运行"心跳（pd.read_excel / openpyxl.load_workbook 无进度回调）
+# =====================================================
+
+class _Ticker:
+    """在一段无法拆分、无进度回调的阻塞调用（整份 pandas/openpyxl 读取）期间，
+    定时打一条"仍在处理"日志，避免宽表/大文件读取几十秒甚至更久时，界面在这段
+    空窗期里毫无变化，被用户误判为卡死（实际只是单线程还在读，见 CLAUDE.md 用户反馈）。
+    用独立守护线程纯计时打日志，不碰被计时的调用本身，调用结束后 stop 即可。
+    """
+
+    def __init__(self, log_fn, label, first_delay=4.0, interval=7.0):
+        self._log_fn = log_fn
+        self._label = label
+        self._first_delay = first_delay
+        self._interval = interval
+        self._stop_evt = threading.Event()
+        self._thread = None
+
+    def __enter__(self):
+        if self._log_fn:
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
+        return self
+
+    def _run(self):
+        elapsed = 0.0
+        delay = self._first_delay
+        while not self._stop_evt.wait(delay):
+            elapsed += delay
+            self._log_fn(f"    …仍在{self._label}，已等待 {int(elapsed)} 秒"
+                          f"（文件较大/列较多时属正常现象，不是卡死，请继续等待）")
+            delay = self._interval
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._stop_evt.set()
+        if self._thread is not None:
+            self._thread.join(timeout=0.5)
+        return False
 
 
 # =====================================================
@@ -576,8 +619,11 @@ def _person_key_path(output_root, primary, person, src_stem):
 # =====================================================
 
 def process_file(file_path, rel_path, output_root, config, outputs,
-                 single_file=False, log_fn=None, stop_flag=None, tick_fn=None):
+                 single_file=False, log_fn=None, stop_flag=None, tick_fn=None, stats=None):
     """处理单个文件：始终产出『汇总』；满足条件时附加产出『到人』。返回写入总行数。
+
+    stats 为可选的可变 dict（由 run_split 传入），用于跨文件累计「跳过 sheet 数 /
+    失败文件数」，供收尾的机器可读摘要行使用；为 None 时只记日志不累计。
 
     · 汇总：按 split_column 拆。单文件/merge=True → 扁平合并；文件夹+merge=False → 原文件拆分。
     · 到人：仅当 to_person 开、有 person_column、且文件名命中 person_file_filter 时，
@@ -634,8 +680,11 @@ def process_file(file_path, rel_path, output_root, config, outputs,
 
         # ---------- 读数据 ----------
         try:
-            df_dict = pd.read_excel(work_path, sheet_name=None, header=None, engine='openpyxl')
+            with _Ticker(log_fn, "读取数据"):
+                df_dict = pd.read_excel(work_path, sheet_name=None, header=None, engine='openpyxl')
         except Exception as e:
+            if stats is not None:
+                stats["failed_files"] += 1
             if log_fn:
                 log_fn(f"  ❌ 读取失败：{e}")
             return 0
@@ -647,9 +696,14 @@ def process_file(file_path, rel_path, output_root, config, outputs,
             h = resolve_header_row(df.values[:20].tolist(), config)
             if h != -1 and h <= len(df):
                 sheet_headers[sn] = h
-            elif log_fn:
-                log_fn(f"  ⚠️ sheet「{sn}」没识别出表头行，已跳过该 sheet")
+            else:
+                if stats is not None:
+                    stats["skipped_sheets"] += 1
+                if log_fn:
+                    log_fn(f"  ⚠️ sheet「{sn}」没识别出表头行，已跳过该 sheet")
         if not sheet_headers:
+            if stats is not None:
+                stats["failed_files"] += 1
             if log_fn:
                 log_fn("  ⚠️ 未找到有效表头，跳过")
             return 0
@@ -659,14 +713,17 @@ def process_file(file_path, rel_path, output_root, config, outputs,
             log_fn("  ⏳ 正在读取格式…")
         header_meta = {}
         try:
-            wb_src = openpyxl.load_workbook(work_path, read_only=False, data_only=True)
-            for sn, h in sheet_headers.items():
-                if sn in wb_src.sheetnames:
-                    header_meta[sn] = _read_header_format(wb_src[sn], h)
-            if keep_formulas_ok:
-                # 额外打开一份 data_only=False 的源工作簿，专门取公式文本（不影响 wb_src 的缓存值读取）
-                wb_formula = openpyxl.load_workbook(work_path, read_only=False, data_only=False)
+            with _Ticker(log_fn, "读取格式"):
+                wb_src = openpyxl.load_workbook(work_path, read_only=False, data_only=True)
+                for sn, h in sheet_headers.items():
+                    if sn in wb_src.sheetnames:
+                        header_meta[sn] = _read_header_format(wb_src[sn], h)
+                if keep_formulas_ok:
+                    # 额外打开一份 data_only=False 的源工作簿，专门取公式文本（不影响 wb_src 的缓存值读取）
+                    wb_formula = openpyxl.load_workbook(work_path, read_only=False, data_only=False)
         except Exception as e:
+            if stats is not None:
+                stats["failed_files"] += 1
             if log_fn:
                 log_fn(f"  ❌ 读取格式失败：{e}")
             return 0
@@ -720,6 +777,8 @@ def process_file(file_path, rel_path, output_root, config, outputs,
             df = df_dict[sn]
             col_idx = _find_col_index(df, h, split_column)
             if col_idx is None:
+                if stats is not None:
+                    stats["skipped_sheets"] += 1
                 if log_fn:
                     log_fn(f"  ⚠️ sheet「{sn}」第 {h} 行（识别出的表头行）里没找到拆分字段"
                            f"「{split_column}」，已跳过该 sheet")
@@ -844,9 +903,12 @@ def run_split(config, log_fn=None, progress_fn=None, stop_flag=None):
 
     outputs = {}
     grand_total = 0
+    stopped = False
+    stats = {"skipped_sheets": 0, "failed_files": 0}   # 供收尾 [SUMMARY] 行汇总
     for i, (fp, rp) in enumerate(tasks):
         if stop_flag and stop_flag():
             _log("⛔ 已停止")
+            stopped = True
             break
         try:
             size_mb = os.path.getsize(fp) / 1048576
@@ -863,8 +925,10 @@ def run_split(config, log_fn=None, progress_fn=None, stop_flag=None):
         _tick(0.0)
         try:
             grand_total += process_file(fp, rp, output_path, config, outputs,
-                                        single_file, _log, stop_flag, tick_fn=_tick)
+                                        single_file, _log, stop_flag, tick_fn=_tick,
+                                        stats=stats)
         except Exception as e:
+            stats["failed_files"] += 1
             _log(f"  ❌ 处理失败：{e}")
         _tick(1.0)
 
@@ -872,6 +936,7 @@ def run_split(config, log_fn=None, progress_fn=None, stop_flag=None):
     n_out = len(outputs)
     _log(f"\n正在保存 {n_out} 个输出文件...")
     saved = 0
+    failed_saves = 0
     primaries = set()
     for j, (key, ob) in enumerate(outputs.items()):
         try:
@@ -879,7 +944,9 @@ def run_split(config, log_fn=None, progress_fn=None, stop_flag=None):
                 saved += 1
                 primaries.add(key[1])   # key = (tree, primary, ...)
         except Exception as e:
-            _log(f"  ❌ 保存失败 {ob.save_path}：{e}")
+            failed_saves += 1
+            _log(f"  ❌ 保存失败 {os.path.basename(ob.save_path)}：{e}"
+                 f"（若该文件正被 Excel/WPS 打开，请先关闭再重跑）")
         if progress_fn:
             progress_fn(0.75 + 0.23 * (j + 1) / n_out)
         if (j + 1) % 10 == 0 and (j + 1) < n_out:
@@ -887,6 +954,7 @@ def run_split(config, log_fn=None, progress_fn=None, stop_flag=None):
         time.sleep(0.002)   # 让出 GIL，保存阶段保持界面响应
 
     # ---------- 对每个生成了文件夹的主取值打包 ZIP（方便分发） ----------
+    zips = 0
     if make_zip and not single_file:
         for primary in primaries:
             folder = os.path.join(output_path, safe_filename(primary))
@@ -905,6 +973,7 @@ def run_split(config, log_fn=None, progress_fn=None, stop_flag=None):
             if any(os.scandir(folder)):
                 try:
                     shutil.make_archive(folder, 'zip', folder)
+                    zips += 1
                     _log(f"  📦 {safe_filename(primary)}.zip")
                 except Exception as e:
                     _log(f"  ⚠️ 打包失败 {primary}：{e}")
@@ -915,5 +984,21 @@ def run_split(config, log_fn=None, progress_fn=None, stop_flag=None):
     _log(f"\n✅ 全部完成！生成 {saved} 个文件，共写入 {grand_total} 行，"
          f"耗时 {f'{mm} 分 {ss} 秒' if mm else f'{ss} 秒'}")
     _log(f"📁 输出目录：{output_path}")
+
+    # 机器可读收尾行（v2.7）：GUI 提取后渲染完成摘要。追加式输出，不改变返回值与
+    # 既有日志内容，下游 excelrouter-skill 只是多打一行，无契约变化。
+    summary = {
+        "mode": "excel",
+        "groups": len(primaries),
+        "files": saved,
+        "rows": grand_total,
+        "zips": zips,
+        "skipped_sheets": stats["skipped_sheets"],
+        "failed_files": stats["failed_files"],
+        "failed_saves": failed_saves,
+        "stopped": stopped,
+        "output": output_path,
+    }
+    _log(f"[SUMMARY] {json.dumps(summary, ensure_ascii=False)}")
 
     return output_path

@@ -1,0 +1,44 @@
+# ExcelRouter Skill — WorkBuddy 技能市场元信息
+# 上架 SkillHub (skillhub.cn) 时，本文件内容可直接"抄"到网页端发布表单。
+# slug 为市场 URL 标识，固定小写 + 连字符。
+# 注意：version 跟随上游桌面版（本 skill 的 vendor/core 与桌面版同一套代码）。
+
+name: excelrouter
+display_name: ExcelRouter 表格拆分与 PDF 加密分发
+version: "2.7.1"
+slug: excelrouter
+description: >
+  把一批 Excel 表格按任意字段（部门/区域/工号/班级等）拆分成多个文件，
+  保留原始格式，支持跨文件合并汇总与"到人"二级拆分（多 sheet 各自的人字段、
+  自动识别人字段、单文件输入均可）；也支持把一批 PDF 按"网格→密码"清单
+  批量加密 + 打专属水印后分发，映射清单可自动生成模板和随机密码。
+  数据全程本机处理，不上传。
+category: productivity
+triggers:
+  - "按部门拆表"
+  - "把这个表按区域拆分"
+  - "分表"
+  - "每个人一个文件"
+  - "按班级拆分"
+  - "按工号拆分"
+  - "按网格拆"
+  - "拆到人"
+  - "工资条一人一份"
+  - "split excel by column"
+  - "批量给 PDF 加密码"
+  - "PDF 加密分发"
+  - "给每个网格的 PDF 加水印"
+  - "批量加密 PDF"
+tags:
+  - excel
+  - xlsx
+  - 拆分
+  - pdf
+  - 加密
+  - 水印
+  - 办公自动化
+  - 数据处理
+author: AbeLin
+license: MIT
+homepage: https://github.com/MarsandSea/excelrouter-skill
+requirements: requirements.txt

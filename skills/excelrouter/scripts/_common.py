@@ -17,11 +17,15 @@ import sys
 
 _VENDOR_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vendor")
 
-# config/default_config.json 的逐字副本（截至上游 v2.5.1 + PDF 分发/保留公式两项 WIP）。
-# 之所以在这里重新声明一份而不是运行时读上游的 default_config.json，是因为上游那份文件
-# 是 GUI 专用路径（gui/app.py 用 sys._MEIPASS 找它），本 CLI 不依赖上游目录结构，
-# 只依赖 vendor/core 这一个包。两份配置字段必须保持同步，改动时对照
-# excel-router 仓库的 config/default_config.json 一起改。
+# 上游 config/default_config.json 的镜像（截至上游 v2.7.0 tag），外加本 CLI 自有的
+# no_timestamp（见文件末尾注释）。之所以在这里重新声明一份而不是运行时读上游的
+# default_config.json，是因为上游那份文件是 GUI 专用路径（gui/app.py 用 sys._MEIPASS
+# 找它），本 CLI 不依赖上游目录结构，只依赖 vendor/core 这一个包。
+#
+# 每次同步上游后都要对照 excel-router 仓库的 config/default_config.json 核一遍。
+# 【有意省略的两个上游字段】auto_open_output、ui_mode 是纯 GUI 行为（跑完自动打开输出
+# 目录、界面当前处于哪个模式），命令行形态用不上，CLI 侧对应行为见 SKILL.md 的
+# 「跑完之后必须把结果交给用户」一节。不要为了"对齐上游"把它们补进来。
 DEFAULTS = {
     "input_path": "",
     "output_path": "",
@@ -38,6 +42,11 @@ DEFAULTS = {
     "skip_values": ["合计", "小计", "总计", "平均", ""],
     "merge_across_files": False,
     "make_zip": True,
+    # no_timestamp 是本 CLI 自有的字段，上游 core 里没有（内核无条件产出
+    # {输出根}/{MMDDHHMM}结果 子目录）。它由 scripts 包装层的 flatten_output() 实现：
+    # 内核跑完后把内容提升到 --output 根、再删掉时间戳目录。传给 core 也不报错，
+    # core 只是忽略它——真正的扁平化动作发生在包装层，见 er_split.py。
+    "no_timestamp": False,
     "exact_match": True,
     "preserve_format": True,
     "keep_formulas": False,

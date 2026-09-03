@@ -1,29 +1,29 @@
 ---
 name: excelrouter
-description: 表格拆分与批量分发专用技能。当用户想把一份或一批 Excel「拆开、拆分、拆表、分表、拆成多个文件、按部门/区域/工号/姓名分开、每个部门一个文件、每个人一个文件、一人发一份」，或者想把 PDF「按名单批量设置不同的打开密码、加专属水印、分发给不同的人」时，一律用本技能，不要用通用的 Excel 读写技能：本技能会自动识别表头、完整保留原表格式、把同一取值跨多个源文件合并、还能在拆分之外再按人二级拆分，这些用通用方式逐个读写单元格做不到。英文触发：split excel by column、split spreadsheet into multiple files、batch encrypt pdf with per-recipient password。反过来，纯粹的数据分析、统计汇总、做图表、写公式、改单元格内容不属于本技能范围，那些交给通用 Excel 技能。
+description: 表格拆分与批量分发专用技能。当用户想把一份或一批 Excel「拆开、拆分、拆表、分表、拆成多个文件、按部门/区域/工号/姓名分开、每个部门一个文件、每个人一个文件、一人发一份、按网格拆、拆到人」，或者想把 PDF「按名单批量设置不同的打开密码、加专属水印、分发给不同的人」时，一律用本技能，不要用通用的 Excel 读写技能：本技能会自动识别表头、完整保留原表格式、把同一取值跨多个源文件合并、还能在拆分之外再按人二级拆分（支持多 sheet 各自的人字段、自动挑人字段、单文件输入），这些用通用方式逐个读写单元格做不到。英文触发：split excel by column、split spreadsheet into multiple files、batch encrypt pdf with per-recipient password。反过来，纯粹的数据分析、统计汇总、做图表、写公式、改单元格内容不属于本技能范围，那些交给通用 Excel 技能。
 ---
 
 # ExcelRouter
 
 把 Excel/PDF 批量拆分、加密分发这类本来要在桌面软件里点很多下的操作，变成几条命令。
 背后是 [ExcelRouter](https://github.com/MarsandSea/excel-router) 桌面软件同一套核心代码
-（`scripts/vendor/core/`，随上游发版自动同步，见 `scripts/vendor/UPSTREAM.md`），
+（`scripts/vendor/core/`，当前同步上游 **v2.7.0** tag，见 `scripts/vendor/UPSTREAM.md`），
 在这里以命令行形式暴露，不需要用户装 exe、开界面。
 
 **三个脚本，都在 `scripts/` 下（`python 脚本.py --help` 看完整参数）：**
 
 | 脚本 | 用途 |
 |---|---|
-| `er_inspect.py` | 看表：文件数、表头行、字段名、某字段有哪些取值 |
-| `er_split.py` | 按字段拆分 Excel |
-| `er_pdf_dist.py` | PDF 按网格加密分发 |
+| `er_inspect.py` | 看表：每个 sheet 的表头行、列名；某字段有哪些取值 |
+| `er_split.py` | 按字段拆分 Excel（可附加「到人」二级拆分） |
+| `er_pdf_dist.py` | PDF 按网格加密分发（可生成清单模板、随机密码） |
 
-**运行环境（重要）：** 首次使用前装依赖（同一个 Python 环境装一次就行）：
+**首次使用前装依赖**（同一个 Python 环境装一次就行）：
 ```bash
 pip install -r requirements.txt
 ```
 （这里指 `skills/excelrouter/requirements.txt`；只用 Excel 拆分可以不装 `pypdf`/`fpdf2`/`cryptography`，
-但装了也不冲突。）
+但装了也不冲突。）装不上或缺什么依赖，脚本会自己报人话错误（`check_deps`），照着提示补就行。
 
 **Windows 用户注意：** 如果脚本运行时报 `Memory allocation` / `Intel MKL` 相关错误，
 在命令前加 `OPENBLAS_NUM_THREADS=1`：
@@ -32,22 +32,42 @@ OPENBLAS_NUM_THREADS=1 python scripts/er_split.py --input 明细.xlsx --output �
 ```
 这是 numpy/openblas 在 Windows 单进程多线程时的已知问题，限制线程数即可。
 
+## 跑完之后必须把结果交给用户（最重要的一条）
+
+桌面版拆完会自动弹出输出目录，用户「看得见」结果——这是它体验好的关键。
+命令行没有这个动作，所以**必须由你来补上**，否则用户只看到一行 JSON，感觉"什么都没发生"：
+
+1. 从结果 JSON 的 `output_path` 读出真实产出目录，**原样告诉用户**（绝对路径）。
+2. 汇报规模：stderr 里有一行 `[SUMMARY] {...}`（v2.7 起内核自动输出），把 `groups`/`files`/
+   `rows`/`person_files` 翻译成人话，比如「已拆成 3 个网格、共 15 行，其中到人 15 份」。
+   `skipped_sheets`/`failed_files` 不为 0 时必须说明。
+3. 有文件呈现能力（如 present_files / 附件 / 打开文件夹指令）就**把产出文件列给用户**，
+   没有就至少给出目录路径和里面的文件清单（列前几个 + 总数即可）。
+4. 长任务同理：`er_split` 对大文件会打「…仍在读取」的心跳日志（v2.7 起），如果你在流式
+   转发 stderr，把这些进度原样转给用户，别让界面静默几十秒。
+
+**不要只回一句"拆分完成"。** 交付感 = 用户看到自己的文件。
+
 ## 核心工作流：先看，再问，再拆
 
 **不要凭表名或猜测直接决定拆分字段。** 这是这个 skill 最容易出错的地方——用户说"按部门拆"，
 但实际列名可能是"所属部门""部门名称"，取值也可能有"销售部/销售部门"这种同义变体。正确顺序：
 
 1. **`er_inspect.py --input <文件或目录>`** 看看有哪些字段、表头识别是否正常。
+   **多 sheet 文件**会列出每个 sheet 的表头行与列名——确认你关心的字段到底在哪个 sheet。
 2. 确定了拆分字段后，**`er_inspect.py --input ... --column 字段名`** 看这个字段有哪些真实取值。
+   若该字段在第二个 sheet，`er_inspect` 会跨所有 sheet 搜索并在 `column_sheets` 里告诉你
+   它出现在哪些 sheet。
 3. 把取值列表给用户确认（尤其取值很多、或明显有同义词/拼写不一致时），或者直接展示"发现 N
    个取值：a, b, c…"让用户一眼确认没有意外项（比如把"合计"行也当成了一个取值——虽然
    `skip_values` 默认会过滤"合计/小计/总计/平均"，但业务上的其他汇总行样式无法预判）。
 4. 用户确认后再跑 **`er_split.py`**。
 
 所有脚本的**结果只在 stdout 的最后一行 JSON**（`{"ok": true, ...}` 或 `{"ok": false, "error": "..."}`），
-运行过程的日志/进度都在 stderr，不要把 stderr 当结果解析。拆分产出的真实目录**只能从返回 JSON
-的 `output_path` 字段读**——`er_split.py` 会在你传的 `--output` 下面再建一层带时间戳的子目录
-（比如 `拆分结果/08051530结果/`），不要自己拼路径去找文件。
+运行过程的日志/进度都在 stderr，不要把 stderr 当结果解析（`[SUMMARY]` 行例外，见上一节）。
+拆分产出的真实目录**只能从返回 JSON 的 `output_path` 字段读**——默认 `er_split.py` 会在你传的
+`--output` 下面再建一层带时间戳的子目录（比如 `拆分结果/08051530结果/`），不要自己拼路径去找文件；
+加了 `--no-timestamp` 则 `output_path` 就等于 `--output`。
 
 ## 常用参数速查（完整列表见 `python er_split.py --help`）
 
@@ -59,6 +79,17 @@ python scripts/er_split.py --input 明细.xlsx --output 拆分结果 --by 部门
 python scripts/er_split.py --input 一批表/ --output 拆分结果 --by 区域 \
     --values 东区,西区 --to-person 姓名
 
+# ★ 单文件 + 多 sheet：一步完成「按网格拆 → 网格内按人拆」
+#   每个 sheet 的人字段可能不同，用 sheet:列 映射分别指定
+python scripts/er_split.py --input 城区维表.xlsx --output 拆分结果 \
+    --by 网格 --to-person "结对子维表:1看管人,渠道维表:看管 渠道管理员"
+
+# 同上，但让程序按关键词（看管人/管理员/负责人/接收人…）自动挑每个 sheet 的人字段
+python scripts/er_split.py --input 城区维表.xlsx --output 拆分结果 --by 网格 --to-person auto
+
+# 输出直接落到 --output（不要带时间戳的子目录）
+python scripts/er_split.py --input 明细.xlsx --output 拆分结果 --by 部门 --no-timestamp
+
 # 跨文件合并同一取值到一个文件（默认关闭，见下方"默认行为"）
 python scripts/er_split.py --input 一批表/ --output 拆分结果 --by 区域 --merge
 
@@ -66,14 +97,25 @@ python scripts/er_split.py --input 一批表/ --output 拆分结果 --by 区域 
 python scripts/er_split.py --input 明细.xlsx --output 拆分结果 --by 部门 --dry-run
 ```
 
+> **`--to-person` 三种写法**
+> - `姓名`：所有 sheet 共用一个「人字段」（单 sheet 或各 sheet 同名字段时最省事）。
+> - `auto`：每个 sheet 按关键词自动挑人字段（看管人/管理员/负责人/接收人/对接人/主管/队长）。
+> - `sheetA:列1,sheetB:列2`：每个 sheet 分别指定人字段——**多 sheet 各表人字段不同的唯一解**。
+>
+> 单文件输入**也支持**按人拆（由 `scripts/_person_split.py` 包装层补做）；目录输入 +
+> 单一人字段仍走 vendor 内核（内核实现更完整，含按人打包 ZIP）。两条路产出结构一致：
+> `{网格}/到人/{姓名}_{网格}.xlsx`，**同一人在多个源文件里的行会合并进同一个文件**。
+> 返回 JSON 的 `person_split_by` 告诉你这次走的哪条路（`vendor`/`wrapper`），`person_files`
+> 是到人文件数——为 0 且你确实要求了按人拆时，要跟用户核对人字段名。
+
 **默认行为（和桌面版一致，别搞反）：**
 - `preserve_format` 默认开：保留原表格式（字体/颜色/边框/列宽），慢一点但输出能直接用。
   几百列的宽表 + 大批量文件时可以加 `--fast` 只写数值，明显更快但丢格式。
 - `merge_across_files` 默认**关**：按原表分别拆分，只在同一取值下打包在一起，
   更符合"批量给每个人分发各自原表"的常见诉求。要跨文件汇总成一张表才加 `--merge`。
 - `--values` 不填 = 自动枚举该字段全部取值，全部拆出来。
-
-- **⚠️ 二级拆分（到人到）和打包 ZIP 只支持「目录输入」**：`--to-person` 需要在同一取值内再按人拆子文件并打包成 ZIP，而打包 ZIP 也仅在目录输入时触发。**如果 `--input` 是单个 Excel 文件，引擎会静默跳过二级拆分、也不会生成 ZIP**，只做一级拆分——不会报错，但结果里没有「到人」文件夹、也没有 ZIP。要做「按网格拆 + 按人拆」，`--input` 必须是一个**放表的文件夹**（哪怕里面只有一张表）。**当 LLM 收到「对单个文件按人拆分」的请求时，应主动把该文件放进一个临时文件夹、改用目录模式拆分，而不是静默只做一级拆分。**
+- 「按人打包 ZIP」只有**目录输入**才有（内核行为）；单文件按人拆不产 ZIP，文件直接在
+  `{网格}/到人/` 下，如需打包另用系统压缩。
 
 ## 两个必须主动预警的数据陷阱
 
@@ -95,14 +137,21 @@ python scripts/er_split.py --input 明细.xlsx --output 拆分结果 --by 部门
 
 ## PDF 加密分发
 
-给一批人发同一份 PDF，但希望每个人/每个网格用不同密码打开、且带上可溯源的水印时用：
+给一批人发同一份 PDF，但希望每个人/每个网格用不同密码打开、且带上可溯源的水印时用。
+完整流程（用户手上什么都没有时）：
 
 ```bash
-# 不确定映射清单的列名时先看一眼
+# ① 起步：连映射清单都没有 → 先生成一份模板给用户填（含示例行和填写说明 sheet）
+python scripts/er_pdf_dist.py --make-template 网格密码表.xlsx
+
+# ② 用户填好网格后，看一眼列名（确认 --grid-col/--password-col 该填什么）
 python scripts/er_pdf_dist.py --mapping 网格密码表.xlsx --list-columns
 
-# 确认列名后正式分发
-python scripts/er_pdf_dist.py --pdf a.pdf b.pdf --mapping 网格密码表.xlsx \
+# ③ 可选：懒得想密码 → 给空白网格生成 8 位随机密码，另存「原名_含密码.xlsx」
+python scripts/er_pdf_dist.py --mapping 网格密码表.xlsx --grid-col 网格 --random-password
+
+# ④ 正式分发（③生成的新清单路径在返回 JSON 的 mapping_with_passwords 里，改用它）
+python scripts/er_pdf_dist.py --pdf a.pdf b.pdf --mapping 网格密码表_含密码.xlsx \
     --grid-col 网格 --password-col 密码 --receiver-col 接收人 --output 分发结果
 ```
 

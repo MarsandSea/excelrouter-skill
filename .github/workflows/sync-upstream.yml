@@ -4,9 +4,10 @@ name: Sync upstream core
 # 有新版本就拉过来、跑测试，测试通过才提交并打同名 tag。只跟发布 tag 走，
 # 不跟上游 main 分支的半成品——上游还没打 tag 的改动不会被同步过来。
 #
-# 零新增 secret：读公开上游仓不需要 token；写回本仓用 Actions 默认签发的
-# GITHUB_TOKEN（配合下面 permissions: contents: write），不碰 excel-router
-# 那边已经调通的 release.yml。
+# secret 只有一个：SKILLHUB_TOKEN（把 skill 发到 SkillHub 用，在 skillhub.cn
+# 个人中心 → API keys 创建，skh_ 开头）。读公开上游仓不需要 token；写回本仓用
+# Actions 默认签发的 GITHUB_TOKEN（配合下面 permissions: contents: write），
+# 不碰 excel-router 那边已经调通的 release.yml。
 
 on:
   schedule:
@@ -22,6 +23,7 @@ env:
   TAG_FILE: skills/excelrouter/scripts/vendor/.upstream-tag
   UPSTREAM_MD: skills/excelrouter/scripts/vendor/UPSTREAM.md
   PLUGIN_JSON: .claude-plugin/plugin.json
+  MANIFEST_FILE: skills/excelrouter/manifest.yaml
   REQ_FILE: skills/excelrouter/requirements.txt
 
 jobs:
@@ -83,7 +85,7 @@ jobs:
             grep -vi '^customtkinter' upstream/requirements.txt
           } > "$REQ_FILE"
 
-      - name: Update UPSTREAM.md / .upstream-tag / plugin.json version
+      - name: Update UPSTREAM.md / .upstream-tag / plugin.json / manifest.yaml version
         if: steps.check.outputs.should_sync == 'true'
         shell: bash
         run: |
@@ -127,6 +129,23 @@ jobs:
               f.write("\n")
           PYEOF
 
+          # manifest.yaml 的 version 是 SkillHub 上显示的版本号，必须一起跟上，
+          # 否则上游发了新版，SkillHub 上的版本号会一直停在旧值。
+          python3 - "$MANIFEST_FILE" "$VERSION" <<'PYEOF'
+          import re, sys
+          path, version = sys.argv[1], sys.argv[2]
+          with open(path, encoding="utf-8") as f:
+              content = f.read()
+          new_content, n = re.subn(
+              r'(?m)^version\s*:.*$', f'version: "{version}"', content, count=1
+          )
+          if n != 1:
+              raise SystemExit(f"在 {path} 里没找到 version: 行，请检查文件格式")
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(new_content)
+          print(f"manifest.yaml 版本号已同步为 {version}")
+          PYEOF
+
       - name: Set up Python
         if: steps.check.outputs.should_sync == 'true'
         uses: actions/setup-python@v5
@@ -141,6 +160,7 @@ jobs:
           pytest -q
 
       - name: Commit and tag if content changed
+        id: commit
         if: steps.check.outputs.should_sync == 'true'
         shell: bash
         run: |
@@ -148,11 +168,12 @@ jobs:
           TAG="${{ steps.check.outputs.latest_tag }}"
           if git diff --quiet && git diff --cached --quiet; then
             echo "测试通过但内容无变化，跳过提交"
+            echo "synced=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$VENDOR_DIR" "$TAG_FILE" "$UPSTREAM_MD" "$PLUGIN_JSON" "$REQ_FILE"
+          git add "$VENDOR_DIR" "$TAG_FILE" "$UPSTREAM_MD" "$PLUGIN_JSON" "$MANIFEST_FILE" "$REQ_FILE"
           git commit -m "chore(sync): 同步上游 $TAG"
           git push origin HEAD:main
           if git rev-parse "$TAG" >/dev/null 2>&1; then
@@ -161,3 +182,24 @@ jobs:
             git tag "$TAG"
             git push origin "$TAG"
           fi
+          echo "synced=true" >> "$GITHUB_OUTPUT"
+
+      - name: 发布到 SkillHub
+        # 尽力而为：发布失败只留黄色警告，不影响本仓同步（与 Gitee 镜像同一策略）。
+        # 前置：仓库 Settings → Secrets 加 SKILLHUB_TOKEN（skillhub.cn 个人中心
+        # → API keys 创建，skh_ 开头）。
+        # 先 dry-run 校验格式，通过才真正发布：格式不合格就停在这一步，
+        # 不会把不合格的包送进审核队列。
+        if: steps.commit.outputs.synced == 'true'
+        continue-on-error: true
+        shell: bash
+        env:
+          SKILLHUB_TOKEN: ${{ secrets.SKILLHUB_TOKEN }}
+          UPSTREAM_TAG: ${{ steps.check.outputs.latest_tag }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://skillhub.cn/install/install.sh | bash -s -- --cli-only
+          export PATH="$HOME/.local/bin:$PATH"
+          skillhub login --key "$SKILLHUB_TOKEN" --host https://api.skillhub.cn
+          skillhub publish skills/excelrouter --host https://api.skillhub.cn --dry-run
+          skillhub publish skills/excelrouter --host https://api.skillhub.cn --changelog "同步上游 $UPSTREAM_TAG"

@@ -10,7 +10,7 @@ description: 表格拆分与批量分发专用技能。当用户想把一份或�
 （`scripts/vendor/core/`，当前同步上游 **v2.7.0** tag，见 `scripts/vendor/UPSTREAM.md`），
 在这里以命令行形式暴露，不需要用户装 exe、开界面（适合界面化的场景见文末「交叉引流」）。
 
-**三个脚本，都在 `scripts/` 下（`python 脚本.py --help` 看完整参数）：**
+**四个脚本，都在 `scripts/` 下（`python 脚本.py --help` 看完整参数）：**
 
 | 脚本 | 用途 |
 |---|---|

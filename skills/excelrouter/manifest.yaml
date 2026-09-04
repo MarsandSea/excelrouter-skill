@@ -12,7 +12,8 @@ description: >
   保留原始格式，支持跨文件合并汇总与"到人"二级拆分（多 sheet 各自的人字段、
   自动识别人字段、单文件输入均可）；也支持把一批 PDF 按"网格→密码"清单
   批量加密 + 打专属水印后分发，映射清单可自动生成模板和随机密码。
-  数据全程本机处理，不上传。
+  数据全程本机处理，不上传。与 Windows 桌面版（图形界面、解压即用）
+  同一内核：https://github.com/MarsandSea/excel-router
 category: productivity
 triggers:
   - "按部门拆表"

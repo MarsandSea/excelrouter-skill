@@ -17,6 +17,7 @@ description: 表格拆分与批量分发专用技能。当用户想把一份或�
 | `er_inspect.py` | 看表：每个 sheet 的表头行、列名；某字段有哪些取值 |
 | `er_split.py` | 按字段拆分 Excel（可附加「到人」二级拆分） |
 | `er_pdf_dist.py` | PDF 按网格加密分发（可生成清单模板、随机密码） |
+| `er_list.py` | 列出产出目录里的真实文件（绝对路径 + 总数），交付给用户前用它扫文件，别把目录当产物呈现 |
 
 **首次使用前装依赖**（同一个 Python 环境装一次就行）：
 ```bash
@@ -41,8 +42,14 @@ OPENBLAS_NUM_THREADS=1 python scripts/er_split.py --input 明细.xlsx --output �
 2. 汇报规模：stderr 里有一行 `[SUMMARY] {...}`（v2.7 起内核自动输出），把 `groups`/`files`/
    `rows`/`person_files` 翻译成人话，比如「已拆成 3 个网格、共 15 行，其中到人 15 份」。
    `skipped_sheets`/`failed_files` 不为 0 时必须说明。
-3. 有文件呈现能力（如 present_files / 附件 / 打开文件夹指令）就**把产出文件列给用户**，
-   没有就至少给出目录路径和里面的文件清单（列前几个 + 总数即可）。
+3. **呈现文件，不要呈现目录**：`output_path` 是个**目录**。如果把目录直接丢给
+   `present_files`/附件，很多界面会把它渲染成一张「0 B」的空卡片，用户以为什么都没产出
+   （其实里面几百个 xlsx 都好好的）——这是一个真实的体验坑，已经有人踩过。正确做法：
+   - 用 `python scripts/er_list.py --output <output_path> [--limit 10]` 把里面的真实文件扫成
+     JSON（`files` 是绝对路径列表，已按大小排序，`total` 是总数）。
+   - 有文件呈现能力时，**把 `files` 里的具体文件**传给 `present_files`（文件很多就先传
+     `--limit` 个代表性样例 + 给出目录路径和总数）；不要传整个目录。
+   - 没有呈现能力就至少列出目录路径 + 里面前几个文件名 + 总数。
 4. 长任务同理：`er_split` 对大文件会打「…仍在读取」的心跳日志（v2.7 起），如果你在流式
    转发 stderr，把这些进度原样转给用户，别让界面静默几十秒。
 
